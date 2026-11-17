@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Radioenlaces - @JCabello</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Consolas', monospace;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h2 {
+            color: #00ffcc;
+            font-size: 16px;
+            text-align: center;
+            margin: 8px 0;
+        }
+        .marco {
+            background-color: #1e1e1e;
+            border: 2px solid #00ffcc;
+            border-radius: 6px;
+            padding: 10px;
+            width: 100%;
+            max-width: 480px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        legend {
+            color: #00ffcc;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 0 5px;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            color: #cccccc;
+            margin-top: 6px;
+        }
+        input {
+            width: 100%;
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border: 1px solid #444;
+            padding: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            margin-top: 2px;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            background-color: #00ffcc;
+            color: #000000;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        button:active {
+            background-color: #00b399;
+        }
+        .resultado {
+            background-color: #1e1e1e;
+            border: 1px solid #ffffff;
+            color: #ffffff;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            width: 100%;
+            max-width: 480px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            border-radius: 4px;
+        }
+        .simulador-container {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            padding: 10px;
+            width: 100%;
+            max-width: 480px;
+            margin-top: 5px;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        .simulador-container label {
+            color: #aaaaaa;
+            font-size: 11px;
+        }
+        input[type=range] {
+            width: 100%;
+            accent-color: #00ffcc;
+            background: #2d2d2d;
+            margin: 8px 0;
+        }
+        .etiqueta-simulada {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: #ff3355;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>RADIOENLACES - AZIMUT Y NIVEL (@JCabello)</h2>
+
+    <!-- SECCIÓN ORIGEN -->
+    <fieldset class="marco">
+        <legend>Punto de Origen (Torre / Antena)</legend>
+        <label>Latitud Origen:</label>
+        <input type="text" id="latitud_origen" placeholder="Ej: 40.96788">
+        
+        <label>Longitud Origen:</label>
+        <input type="text" id="longitud_origen" placeholder="Ej: 0.87938">
+        
+        <label>Altitud Terreno Origen (m):</label>
+        <input type="text" id="altitud_terreno_origen" value="0.0">
+        
+        <label>Altura Antena en Torre / Suelo (m):</label>
+        <input type="text" id="altura_torre_origen" value="12.0">
+    </fieldset>
+
+    <!-- SECCIÓN DESTINO -->
+    <fieldset class="marco">
+        <legend>Punto de Destino (Receptor)</legend>
+        <label>Latitud Destino:</label>
+        <input type="text" id="latitud_destino" placeholder="Ej: 40.88626">
+        
+        <label>Longitud Destino:</label>
+        <input type="text" id="longitud_destino" placeholder="Ej: 0.79739">
+        
+        <label>Altitud Terreno Destino (m):</label>
+        <input type="text" id="altitud_terreno_destino" value="0.0">
+        
+        <label>Altura Antena en Torre / Suelo (m):</label>
+        <input type="text" id="altura_torre_destino" value="12.0">
+    </fieldset>
+
+    <!-- BOTÓN CALCULAR -->
+    <button onclick="calcular_enlace()">CALCULAR ENLACE, RUMBO Y ELEVACIÓN</button>
+
+    <!-- RESULTADOS -->
+    <div class="resultado" id="etiqueta_resultado">
+        Distancia: -- | Rumbo: -- | Elevación: --
+    </div>
+
+    <!-- SIMULADOR BRÚJULA -->
+    <div class="simulador-container">
+        <label>Simulador Brújula / Azimuth (Horizontal):</label>
+        <input type="range" id="barra_giro" min="0" max="360" value="0" oninput="actualizar_simulacion()">
+        <div class="etiqueta-simulada" id="etiqueta_brujula_simulada">Horizontal: 0°</div>
+    </div>
+
+    <!-- SIMULADOR NIVEL -->
+    <div class="simulador-container" style="margin-bottom: 20px;">
+        <label>Simulador Inclinómetro / Nivel Vertical (-45° a +45°):</label>
+        <input type="range" id="barra_nivel" min="-45" max="45" step="0.5" value="0" oninput="actualizar_simulacion()">
+        <div class="etiqueta-simulada" id="etiqueta_nivel_simulado">Vertical: 0.0°</div>
+    </div>
+
+    <script>
+        let rumbo_objetivo_global = 0.0;
+        let elevacion_objetivo_global = 0.0;
+
+        function limpiar_numero(valor_texto) {
+            if (!valor_texto) return 0.0;
+            return parseFloat(valor_texto.trim().replace(',', '.')) || 0.0;
+        }
+
+        function calcular_enlace() {
+            try {
+                let lat1 = limpiar_numero(document.getElementById('latitud_origen').value);
+                let lon1 = limpiar_numero(document.getElementById('longitud_origen').value);
+                let alt_terreno_1 = limpiar_numero(document.getElementById('altitud_terreno_origen').value);
+                let altura_torre_1 = limpiar_numero(document.getElementById('altura_torre_origen').value);
+                let alt1 = alt_terreno_1 + altura_torre_1;
+
+                let lat2 = limpiar_numero(document.getElementById('latitud_destino').value);
+                let lon2 = limpiar_numero(document.getElementById('longitud_destino').value);
+                let alt_terreno_2 = limpiar_numero(document.getElementById('altitud_terreno_destino').value);
+                let altura_torre_2 = limpiar_numero(document.getElementById('altura_torre_destino').value);
+                let alt2 = alt_terreno_2 + altura_torre_2;
+
+                let lat_rad_1 = lat1 * Math.PI / 180;
+                let lon_rad_1 = lon1 * Math.PI / 180;
+                let lat_rad_2 = lat2 * Math.PI / 180;
+                let lon_rad_2 = lon2 * Math.PI / 180;
+
+                let diferencia_lon = lon_rad_2 - lon_rad_1;
+                let diferencia_lat = lat_rad_2 - lat_rad_1;
+
+                let radio_tierra_km = 6371.0;
+                let a = Math.sin(diferencia_lat / 2) ** 2 + 
+                        Math.cos(lat_rad_1) * Math.cos(lat_rad_2) * Math.sin(diferencia_lon / 2) ** 2;
+                let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                let distancia_km = radio_tierra_km * c;
+
+                let x = Math.cos(lat_rad_2) * Math.sin(diferencia_lon);
+                let y = (Math.cos(lat_rad_1) * Math.sin(lat_rad_2)) - 
+                        (Math.sin(lat_rad_1) * Math.cos(lat_rad_2) * Math.cos(diferencia_lon));
+                
+                rumbo_objetivo_global = (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+
+                let diferencia_altitud_metros = alt2 - alt1;
+                let distancia_metros = distancia_km * 1000.0;
+                
+                if (distancia_metros > 0) {
+                    elevacion_objetivo_global = Math.atan(diferencia_altitud_metros / distancia_metros) * 180 / Math.PI;
+                } else {
+                    elevacion_objetivo_global = 0.0;
+                }
+
+                document.getElementById('etiqueta_resultado').innerText = 
+                    `Dist: ${distancia_km.toFixed(2)} km | Rumbo: ${rumbo_objetivo_global.toFixed(1)}° | Elev: ${elevacion_objetivo_global >= 0 ? '+' : ''}${elevacion_objetivo_global.toFixed(1)}°`;
+
+                actualizar_simulacion();
+
+            } catch (error) {
+                alert("Por favor, introduce valores numéricos válidos en las coordenadas.");
+            }
+        }
+
+        function actualizar_simulacion() {
+            let orientacion_actual = parseInt(document.getElementById('barra_giro').value);
+            let diferencia_rumbo = (rumbo_objetivo_global - orientacion_actual + 360) % 360;
+            if (diferencia_rumbo > 180) diferencia_rumbo -= 360;
+
+            let guia_giro = "";
+            if (Math.abs(diferencia_rumbo) < 3) {
+                guia_giro = " [OK]";
+            } else if (diferencia_rumbo > 0) {
+                guia_giro = " (Gira -> DERECHA)";
+            } else {
+                guia_giro = " (Gira <- IZQUIERDA)";
+            }
+
+            document.getElementById('etiqueta_brujula_simulada').innerText = 
+                `Horizontal: ${orientacion_actual}° (Obj: ${rumbo_objetivo_global.toFixed(1)}°)${guia_giro}`;
+
+            let inclinacion_actual = parseFloat(document.getElementById('barra_nivel').value);
+            let diferencia_elevacion = elevacion_objetivo_global - inclinacion_actual;
+
+            let guia_nivel = "";
+            if (Math.abs(diferencia_elevacion) < 0.5) {
+                guia_nivel = " [¡NIVELADO!]";
+            } else if (diferencia_elevacion > 0) {
+                guia_nivel = " (Eleva antena ⬆)";
+            } else {
+                guia_nivel = " (Baja antena ⬇)";
+            }
+
+            document.getElementById('etiqueta_nivel_simulado').innerText = 
+                `Vertical: ${inclinacion_actual >= 0 ? '+' : ''}${inclinacion_actual.toFixed(1)}° (Obj: ${elevacion_objetivo_global >= 0 ? '+' : ''}${elevacion_objetivo_global.toFixed(1)}°)${guia_nivel}`;
+        }
+    </script>
+</body>
+</html>
