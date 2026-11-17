@@ -105,12 +105,18 @@
             background: #2d2d2d;
             margin: 8px 0;
         }
+        /* Clases dinámicas para los estados */
         .etiqueta-simulada {
             text-align: center;
             font-weight: bold;
             font-size: 12px;
-            color: #ff3355;
             margin-top: 2px;
+        }
+        .estado-alerta {
+            color: #ff3355; /* Rojo para cuando hay que girar */
+        }
+        .estado-ok {
+            color: #00ffcc; /* Verde cian brillante para cuando está clavadísimo */
         }
     </style>
 </head>
@@ -162,14 +168,14 @@
     <div class="simulador-container">
         <label>Simulador Brújula / Azimuth (Horizontal):</label>
         <input type="range" id="barra_giro" min="0" max="360" value="0" oninput="actualizar_simulacion()">
-        <div class="etiqueta-simulada" id="etiqueta_brujula_simulada">Horizontal: 0°</div>
+        <div class="etiqueta-simulada estado-alerta" id="etiqueta_brujula_simulada">Horizontal: 0°</div>
     </div>
 
     <!-- SIMULADOR NIVEL -->
     <div class="simulador-container" style="margin-bottom: 20px;">
         <label>Simulador Inclinómetro / Nivel Vertical (-45° a +45°):</label>
         <input type="range" id="barra_nivel" min="-45" max="45" step="0.5" value="0" oninput="actualizar_simulacion()">
-        <div class="etiqueta-simulada" id="etiqueta_nivel_simulado">Vertical: 0.0°</div>
+        <div class="etiqueta-simulada estado-alerta" id="etiqueta_nivel_simulado">Vertical: 0.0°</div>
     </div>
 
     <script>
@@ -239,31 +245,41 @@
             let diferencia_rumbo = (rumbo_objetivo_global - orientacion_actual + 360) % 360;
             if (diferencia_rumbo > 180) diferencia_rumbo -= 360;
 
+            let elem_brujula = document.getElementById('etiqueta_brujula_simulada');
             let guia_giro = "";
+
             if (Math.abs(diferencia_rumbo) < 3) {
                 guia_giro = " [OK]";
+                elem_brujula.className = "etiqueta-simulada estado-ok"; // Se pone verde
             } else if (diferencia_rumbo > 0) {
                 guia_giro = " (Gira -> DERECHA)";
+                elem_brujula.className = "etiqueta-simulada estado-alerta"; // Se pone rojo
             } else {
                 guia_giro = " (Gira <- IZQUIERDA)";
+                elem_brujula.className = "etiqueta-simulada estado-alerta"; // Se pone rojo
             }
 
-            document.getElementById('etiqueta_brujula_simulada').innerText = 
+            elem_brujula.innerText = 
                 `Horizontal: ${orientacion_actual}° (Obj: ${rumbo_objetivo_global.toFixed(1)}°)${guia_giro}`;
 
             let inclinacion_actual = parseFloat(document.getElementById('barra_nivel').value);
             let diferencia_elevacion = elevacion_objetivo_global - inclinacion_actual;
 
+            let elem_nivel = document.getElementById('etiqueta_nivel_simulado');
             let guia_nivel = "";
+
             if (Math.abs(diferencia_elevacion) < 0.5) {
                 guia_nivel = " [¡NIVELADO!]";
+                elem_nivel.className = "etiqueta-simulada estado-ok"; // Se pone verde
             } else if (diferencia_elevacion > 0) {
                 guia_nivel = " (Eleva antena ⬆)";
+                elem_nivel.className = "etiqueta-simulada estado-alerta"; // Se pone rojo
             } else {
                 guia_nivel = " (Baja antena ⬇)";
+                elem_nivel.className = "etiqueta-simulada estado-alerta"; // Se pone rojo
             }
 
-            document.getElementById('etiqueta_nivel_simulado').innerText = 
+            elem_nivel.innerText = 
                 `Vertical: ${inclinacion_actual >= 0 ? '+' : ''}${inclinacion_actual.toFixed(1)}° (Obj: ${elevacion_objetivo_global >= 0 ? '+' : ''}${elevacion_objetivo_global.toFixed(1)}°)${guia_nivel}`;
         }
     </script>
